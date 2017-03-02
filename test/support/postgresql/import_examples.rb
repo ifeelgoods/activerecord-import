@@ -169,6 +169,25 @@ def should_support_postgresql_upsert_functionality
       end
     end
 
+    context "with :on_duplicate_raise" do
+      let(:new_topic) { Build(1, :topic_with_book) }
+      let(:mixed_topics) { Build(1, :topic_with_book) + new_topic + Build(1, :topic_with_book) }
+
+      setup do
+        Topic.import new_topic
+      end
+
+      # Recursive import depends on the primary keys of the parent model being returned
+      # on insert. With on_duplicate_key_ignore enabled, not all ids will be returned
+      # and it is possible that a model will be assigned the wrong id and then its children
+      # would be associated with the wrong parent.
+      it ":on_duplicate_key_ignore is ignored" do
+        assert_raise ActiveRecord::RecordNotUnique do
+          Topic.import mixed_topics, on_duplicate_raise: true
+        end
+      end
+    end
+
     context "with :on_duplicate_key_update and validation checks turned off" do
       asssertion_group(:should_support_on_duplicate_key_update) do
         should_not_update_fields_not_mentioned
